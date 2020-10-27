@@ -25,7 +25,20 @@
             </div>
             <div class="dashboard">
                 <label for="map-data-string" style="display: block">地图数据(0表示可走区域，1表示障碍区域 )：</label>
-                <textarea name="map-data-string" id="map-data-string" cols="45" rows="10" v-model="mapDataString"></textarea>
+                <textarea name="map-data-string" id="map-data-string" cols="45" rows="10"
+                          v-model="mapDataString"></textarea>
+                <p>
+                    <label for="entrance-x">入口 x:</label>
+                    <input id="entrance-x" class="coords-input" type="text" v-model="entrance[0]">
+                    <label for="entrance-y"> y:</label>
+                    <input id="entrance-y" class="coords-input" type="text" v-model="entrance[1]">
+                </p>
+                <p>
+                    <label for="exit-x">出口 x:</label>
+                    <input id="exit-x" class="coords-input" type="text" v-model="exit[0]">
+                    <label for="exit-y"> y:</label>
+                    <input id="exit-y" class="coords-input" type="text" v-model="exit[1]">
+                </p>
             </div>
         </div>
         <canvas ref="mapBoard" width="500" height="500"></canvas>
@@ -138,6 +151,12 @@
                     newArray.push(tempArray);
                 })
                 this.$set(this, 'mapData', newArray);
+                this.drawMapBoard();
+            },
+            entrance: function () {
+                this.drawMapBoard();
+            },
+            exit: function () {
                 this.drawMapBoard();
             }
         }
