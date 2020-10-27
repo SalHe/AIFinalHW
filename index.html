@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人工智能大作业</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/vue.js"></script>
+</head>
+
+<body>
+
+<div id="app">
+    <div class="game">
+        <div>
+            <div class="tips">
+                <h1>迷宫</h1>
+                <p>要求：</p>
+                <ol>
+                    <li>从入口走到出口</li>
+                    <li>转弯次数最少（每转一次弯视为移动两次）</li>
+                    <li>移动次数最少</li>
+                </ol>
+            </div>
+            <div class="dashboard">
+                <label for="map-data-string" style="display: block">地图数据(0表示可走区域，1表示障碍区域 )：</label>
+                <textarea name="map-data-string" id="map-data-string" cols="45" rows="10" v-model="mapDataString"></textarea>
+            </div>
+        </div>
+        <canvas ref="mapBoard" width="500" height="500"></canvas>
+    </div>
+</div>
+
+</body>
+
+<script>
+    let app = new Vue({
+        el: '#app',
+        data: {
+            mapData: [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [0, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+                [1, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+                [1, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+                [1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+                [1, 0, 1, 0, 0, 0, 1, 0, 1, 1],
+                [1, 0, 1, 1, 1, 0, 1, 1, 0, 0],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            ],
+            mapDataString: "",
+            entrance: [0, 1],
+            exit: [9, 7],
+            path: [
+                [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [3, 3], [3, 4], [3, 5], [3, 6], [4, 6], [5, 6],
+                [5, 7], [5, 8], [6, 8], [7, 8], [8, 8], [8, 7], [9, 7]
+            ],
+            styleTable: {
+                barrierStyle: "#000",
+                spaceStyle: "#fff",
+                entranceStyle: "#1E9C4D",
+                exitStyle: "#46E375",
+                pathStyle: "#FDDA0077",
+                lineStyle: "#38D96E"
+            }
+        },
+        methods: {
+            drawMapBoard() {
+                let mapBoard = this.$refs.mapBoard;
+                let width = mapBoard.width;
+                let height = mapBoard.height;
+                let cellWidth = width / this.cols;
+                let cellHeight = height / this.rows;
+
+                let ctx = this.$refs.mapBoard.getContext('2d');
+                ctx.fillStyle = this.styleTable.barrierStyle;
+                ctx.fillRect(0, 0, width, height);
+
+                // 绘制地图
+                ctx.fillStyle = this.styleTable.spaceStyle;
+                this.mapData.forEach((rowData, y) => {
+                    rowData.forEach((colData, x) => {
+                        if (colData === 0) {
+                            ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+                        }
+                    });
+                });
+
+                // 绘制线条（看得更清楚）
+                ctx.strokeStyle = this.styleTable.lineStyle;
+                ctx.lineWidth = 2;
+                for (let x = 0; x < this.cols + 1; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * cellWidth, 0);
+                    ctx.lineTo(x * cellWidth, height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < this.rows + 1; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * cellHeight);
+                    ctx.lineTo(width, y * cellHeight);
+                    ctx.stroke();
+                }
+
+                // 绘制入口
+                ctx.fillStyle = this.styleTable.entranceStyle;
+                ctx.fillRect(this.entrance[0] * cellWidth, this.entrance[1] * cellHeight, cellWidth, cellHeight);
+
+                // 绘制出口
+                ctx.fillStyle = this.styleTable.exitStyle;
+                ctx.fillRect(this.exit[0] * cellWidth, this.exit[1] * cellHeight, cellWidth, cellHeight);
+
+                // 绘制路径
+                ctx.fillStyle = this.styleTable.pathStyle;
+                this.path.forEach(p => ctx.fillRect(p[0] * cellWidth, p[1] * cellHeight, cellWidth, cellHeight));
+            }
+        },
+        computed: {
+            rows() {
+                return this.mapData.length;
+            },
+            cols() {
+                return this.mapData[0] ? this.mapData[0].length : 0;
+            }
+        },
+        mounted() {
+            this.drawMapBoard();
+            this.mapDataString = this.mapData.map(i => i.join(",")).join("\n");
+        },
+        watch: {
+            mapDataString: function (val, oldVal) {
+                let newArray = [];
+                val.split("\n").forEach(line => {
+                    let tempArray = [];
+                    line.split(",").forEach(ch => tempArray.push(parseInt(ch)));
+                    newArray.push(tempArray);
+                })
+                this.$set(this, 'mapData', newArray);
+                this.drawMapBoard();
+            }
+        }
+    });
+</script>
+
+</html>
