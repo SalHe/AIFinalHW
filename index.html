@@ -40,11 +40,21 @@
                     <input id="exit-y" class="coords-input" type="text" v-model="exit[1]" :disabled="searching">
                 </p>
                 <p>
-                    <input id="animate-path" type="checkbox" v-model="animatingPath">
+                    <input id="animate-path" type="checkbox" :disabled="searching" v-model="animatingPath">
                     <label for="animate-path">动态展示</label>
                 </p>
                 <p>
-                    <button @click="searchPath">开始搜索</button>
+                    <button @click="searchPath" :disabled="searching">开始搜索</button>
+                    <b v-if="animating" style="color: red;">已搜索完毕，当前正在播放动画...</b>
+                </p>
+                <p v-if="false">
+                    <label for="complexity">复杂度:</label>
+                    <input id="complexity" class="coords-input" type="text" v-model="mazeComplexity">
+                    <label for="maze-cols">尺寸:</label>
+                    <input id="maze-cols" class="coords-input" type="text" v-model="mazeCols">
+                    <label for="maze-rows">×</label>
+                    <input id="maze-rows" class="coords-input" type="text" v-model="mazeRows">
+                    <button @click="generateMaze">生成迷宫</button>
                 </p>
             </div>
         </div>
@@ -72,8 +82,12 @@
             ],
             mapDataString: "",
             searching: false,
+            animating: false,
             entrance: [0, 1],
             exit: [9, 7],
+            mazeComplexity: 0,
+            mazeCols: 10,
+            mazeRows: 10,
             // path: [
             //     [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [3, 3], [3, 4], [3, 5], [3, 6], [4, 6], [5, 6],
             //     [5, 7], [5, 8], [6, 8], [7, 8], [8, 8], [8, 7], [9, 7]
@@ -158,19 +172,23 @@
                     if (this.animatingPath) {
                         new Promise(() => {
                             let i = 0;
+                            this.animating = true;
                             const timer = setInterval(() => {
                                 if (i < path.length) {
                                     this.path.unshift(path[i]);
                                     i++;
-                                } else
+                                } else {
                                     clearInterval(timer);
+                                    this.searching = false;
+                                    this.animating = false;
+                                }
                             }, 100);
                         });
                     } else {
                         this.path.push(...path);
+                        this.searching = false;
+                        alert('搜索完毕！');
                     }
-                }).finally(() => {
-                    this.searching = false;
                 });
             },
             drawMapBoard() {
@@ -221,6 +239,9 @@
                 // 绘制路径
                 ctx.fillStyle = this.styleTable.pathStyle;
                 this.path.forEach(p => ctx.fillRect(p[0] * cellWidth, p[1] * cellHeight, cellWidth, cellHeight));
+            },
+            generateMaze() {
+
             }
         },
         computed: {
@@ -232,7 +253,6 @@
             }
         },
         mounted() {
-            this.drawMapBoard();
             this.mapDataString = this.mapData.map(i => i.join(",")).join("\n");
         },
         watch: {
