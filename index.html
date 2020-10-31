@@ -29,15 +29,22 @@
                           v-model="mapDataString"></textarea>
                 <p>
                     <label for="entrance-x">入口 x:</label>
-                    <input id="entrance-x" class="coords-input" type="text" v-model="entrance[0]">
+                    <input id="entrance-x" class="coords-input" type="text" v-model="entrance[0]" :disabled="searching">
                     <label for="entrance-y"> y:</label>
-                    <input id="entrance-y" class="coords-input" type="text" v-model="entrance[1]">
+                    <input id="entrance-y" class="coords-input" type="text" v-model="entrance[1]" :disabled="searching">
                 </p>
                 <p>
                     <label for="exit-x">出口 x:</label>
-                    <input id="exit-x" class="coords-input" type="text" v-model="exit[0]">
+                    <input id="exit-x" class="coords-input" type="text" v-model="exit[0]" :disabled="searching">
                     <label for="exit-y"> y:</label>
-                    <input id="exit-y" class="coords-input" type="text" v-model="exit[1]">
+                    <input id="exit-y" class="coords-input" type="text" v-model="exit[1]" :disabled="searching">
+                </p>
+                <p>
+                    <input id="animate-path" type="checkbox" v-model="animatingPath">
+                    <label for="animate-path">动态展示</label>
+                </p>
+                <p>
+                    <button @click="searchPath">开始搜索</button>
                 </p>
             </div>
         </div>
@@ -64,14 +71,17 @@
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
             ],
             mapDataString: "",
+            searching: false,
             entrance: [0, 1],
             exit: [9, 7],
-            path: [
-                [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [3, 3], [3, 4], [3, 5], [3, 6], [4, 6], [5, 6],
-                [5, 7], [5, 8], [6, 8], [7, 8], [8, 8], [8, 7], [9, 7]
-            ],
+            // path: [
+            //     [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [3, 3], [3, 4], [3, 5], [3, 6], [4, 6], [5, 6],
+            //     [5, 7], [5, 8], [6, 8], [7, 8], [8, 8], [8, 7], [9, 7]
+            // ],
+            path: [],
+            animatingPath: true,
             styleTable: {
-                barrierStyle: "#000",
+                barrierStyle: "#000000",
                 spaceStyle: "#fff",
                 entranceStyle: "#1E9C4D",
                 exitStyle: "#46E375",
@@ -80,6 +90,89 @@
             }
         },
         methods: {
+            searchPath() {
+                new Promise((resolve, reject) => {
+                    this.searching = true;
+                    const up_vector = [0, -1], right_vector = [1, 0],
+                        down_vector = [0, 1], left_vector = [-1, 0];
+                    let open = [{
+                        location: this.entrance,
+                        f: Number.POSITIVE_INFINITY,
+                        g: 0,
+                        h: Number.POSITIVE_INFINITY,
+                        parent: null
+                    }];
+                    const graph = [...open];
+                    while (open.length > 0) {
+                        open = open.sort((a, b) => a.f - b.f);
+                        const n_fmin = open.shift();
+                        if (n_fmin.location[0] === this.exit[0]
+                            && n_fmin.location[1] === this.exit[1]) {
+                            let p = n_fmin;
+                            const path = [];
+                            while (p) {
+                                path.unshift(p.location);
+                                p = p.parent;
+                            }
+                            resolve(path);
+                        }
+                        const expand_node = [up_vector, right_vector, down_vector, left_vector]
+                            // 求出下一步可能的位置
+                            .map(vec => [n_fmin.location[0] + vec[0], n_fmin.location[1] + vec[1]])
+                            // 去掉越界、不可走的位置
+                            .filter(vec => vec[0] >= 0 && vec[0] < this.cols
+                                && vec[1] >= 0 && vec[1] < this.rows
+                                && this.mapData[vec[1]][vec[0]] === 0
+                                && !(vec[0] === this.entrance[0] && vec[1] === this.entrance[1]))
+                            // 转换为结点
+                            .map(vec => {
+                                const g = n_fmin.g + 1;
+                                const h = this.exit[1] - vec[1] + this.exit[0] - vec[0];
+                                return {
+                                    location: vec,
+                                    f: g + h,
+                                    g: g,
+                                    h: h,
+                                    parent: n_fmin
+                                }
+                            });
+                        expand_node.forEach(node => {
+                            const results = graph.filter(nodeInGraph => nodeInGraph.location[0] === node.location[0]
+                                && nodeInGraph.location[1] === node.location[1]);
+                            if (results.length > 0) {
+                                const found = results[0];
+                                if (node.f < found.f) {
+                                    found.parent = node.parent;
+                                    found.f = node.f;
+                                    found.g = node.g;
+                                    found.h = node.h;
+                                }
+                            } else {
+                                open.push(node);
+                                graph.push(node);
+                            }
+                        });
+                    }
+                }).then(path => {
+                    this.path.splice(0, this.path.length);
+                    if (this.animatingPath) {
+                        new Promise(() => {
+                            let i = 0;
+                            const timer = setInterval(() => {
+                                if (i < path.length) {
+                                    this.path.unshift(path[i]);
+                                    i++;
+                                } else
+                                    clearInterval(timer);
+                            }, 100);
+                        });
+                    } else {
+                        this.path.push(...path);
+                    }
+                }).finally(() => {
+                    this.searching = false;
+                });
+            },
             drawMapBoard() {
                 let mapBoard = this.$refs.mapBoard;
                 let width = mapBoard.width;
@@ -157,6 +250,9 @@
                 this.drawMapBoard();
             },
             exit: function () {
+                this.drawMapBoard();
+            },
+            path: function () {
                 this.drawMapBoard();
             }
         }
