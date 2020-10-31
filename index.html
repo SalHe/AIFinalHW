@@ -44,7 +44,8 @@
                     <label for="animate-path">动态展示</label>
                 </p>
                 <p>
-                    <button @click="searchPath">开始搜索</button>
+                    <button @click="searchPath" :disabled="searching">开始搜索</button>
+                    <b v-if="animating" style="color: red;">已搜索完毕，当前正在播放动画...</b>
                 </p>
             </div>
         </div>
@@ -72,6 +73,7 @@
             ],
             mapDataString: "",
             searching: false,
+            animating: false,
             entrance: [0, 1],
             exit: [9, 7],
             // path: [
@@ -158,19 +160,22 @@
                     if (this.animatingPath) {
                         new Promise(() => {
                             let i = 0;
+                            this.animating = true;
                             const timer = setInterval(() => {
                                 if (i < path.length) {
                                     this.path.unshift(path[i]);
                                     i++;
-                                } else
+                                } else {
                                     clearInterval(timer);
+                                    this.searching = false;
+                                    this.animating = false;
+                                }
                             }, 100);
                         });
                     } else {
                         this.path.push(...path);
+                        this.searching = false;
                     }
-                }).finally(() => {
-                    this.searching = false;
                 });
             },
             drawMapBoard() {
@@ -232,7 +237,6 @@
             }
         },
         mounted() {
-            this.drawMapBoard();
             this.mapDataString = this.mapData.map(i => i.join(",")).join("\n");
         },
         watch: {
