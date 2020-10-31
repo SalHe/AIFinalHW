@@ -111,6 +111,7 @@
                         down_vector = [0, 1], left_vector = [-1, 0];
                     let open = [{
                         location: this.entrance,
+                        vector: [0, 0],
                         f: Number.POSITIVE_INFINITY,
                         g: 0,
                         h: Number.POSITIVE_INFINITY,
@@ -132,18 +133,26 @@
                         }
                         const expand_node = [up_vector, right_vector, down_vector, left_vector]
                             // 求出下一步可能的位置
-                            .map(vec => [n_fmin.location[0] + vec[0], n_fmin.location[1] + vec[1]])
-                            // 去掉越界、不可走的位置
-                            .filter(vec => vec[0] >= 0 && vec[0] < this.cols
-                                && vec[1] >= 0 && vec[1] < this.rows
-                                && this.mapData[vec[1]][vec[0]] === 0
-                                && !(vec[0] === this.entrance[0] && vec[1] === this.entrance[1]))
-                            // 转换为结点
                             .map(vec => {
-                                const g = n_fmin.g + 1;
-                                const h = this.exit[1] - vec[1] + this.exit[0] - vec[0];
                                 return {
-                                    location: vec,
+                                    vector: vec,
+                                    location: [n_fmin.location[0] + vec[0], n_fmin.location[1] + vec[1]]
+                                }
+                            })
+                            // 去掉越界、不可走的位置
+                            .filter(vec_loc => vec_loc.location[0] >= 0 && vec_loc.location[0] < this.cols
+                                && vec_loc.location[1] >= 0 && vec_loc.location[1] < this.rows
+                                && this.mapData[vec_loc.location[1]][vec_loc.location[0]] === 0
+                                && !(vec_loc.location[0] === this.entrance[0] && vec_loc.location[1] === this.entrance[1]))
+                            // 转换为结点
+                            .map(vec_loc => {
+                                const g = n_fmin.g +
+                                    ((vec_loc.vector[0] === n_fmin.vector[0] && vec_loc.vector[1] === n_fmin.vector[1]) ?
+                                    1 : 2);
+                                const h = this.exit[1] - vec_loc.location[1] + this.exit[0] - vec_loc.location[0];
+                                return {
+                                    location: vec_loc.location,
+                                    vector: vec_loc.vector,
                                     f: g + h,
                                     g: g,
                                     h: h,
