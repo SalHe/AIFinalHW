@@ -166,6 +166,7 @@
                                 graph.push(node);
                             }
                         });
+                        reject();
                     }
                 }).then(path => {
                     this.path.splice(0, this.path.length);
@@ -189,7 +190,7 @@
                         this.searching = false;
                         alert('搜索完毕！');
                     }
-                });
+                }).catch(() => alert('搜索失败！'));
             },
             drawMapBoard() {
                 let mapBoard = this.$refs.mapBoard;
