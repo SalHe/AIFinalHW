@@ -26,12 +26,15 @@
             <div class="dashboard">
                 <label for="map-data-string" style="display: block">地图数据(0表示可走区域，1表示障碍区域 )：</label>
                 <textarea name="map-data-string" id="map-data-string" cols="45" rows="10"
+                          style="word-wrap: normal; "
                           v-model="mapDataString"></textarea>
                 <p>
                     <label for="entrance-x">入口 x:</label>
-                    <input id="entrance-x" class="coords-input" type="text" v-model.number="entrance[0]" :disabled="searching">
+                    <input id="entrance-x" class="coords-input" type="text" v-model.number="entrance[0]"
+                           :disabled="searching">
                     <label for="entrance-y"> y:</label>
-                    <input id="entrance-y" class="coords-input" type="text" v-model.number="entrance[1]" :disabled="searching">
+                    <input id="entrance-y" class="coords-input" type="text" v-model.number="entrance[1]"
+                           :disabled="searching">
                 </p>
                 <p>
                     <label for="exit-x">出口 x:</label>
@@ -47,18 +50,16 @@
                     <button @click="searchPath" :disabled="searching">开始搜索</button>
                     <b v-if="animating" style="color: red;">已搜索完毕，当前正在播放动画...</b>
                 </p>
-                <p v-if="false">
-                    <label for="complexity">复杂度:</label>
-                    <input id="complexity" class="coords-input" type="text" v-model="mazeComplexity">
+                <p>
                     <label for="maze-cols">尺寸:</label>
                     <input id="maze-cols" class="coords-input" type="text" v-model="mazeCols">
                     <label for="maze-rows">×</label>
                     <input id="maze-rows" class="coords-input" type="text" v-model="mazeRows">
-                    <button @click="generateMaze">生成迷宫</button>
+                    <button @click="generateMaze" :disabled="searching">生成迷宫</button>
                 </p>
             </div>
         </div>
-        <canvas ref="mapBoard" width="500" height="500"></canvas>
+        <canvas ref="mapBoard" width="700" height="700"></canvas>
     </div>
 </div>
 
@@ -66,231 +67,322 @@
 
 <script>
     let app = new Vue({
-        el: '#app',
-        data: {
-            mapData: [
-                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [0, 0, 0, 1, 0, 0, 0, 1, 0, 1],
-                [1, 0, 0, 1, 0, 0, 0, 1, 0, 1],
-                [1, 0, 0, 0, 0, 1, 1, 0, 0, 1],
-                [1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
-                [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-                [1, 0, 1, 0, 0, 0, 1, 0, 1, 1],
-                [1, 0, 1, 1, 1, 0, 1, 1, 0, 0],
-                [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            ],
-            mapDataString: "",
-            searching: false,
-            animating: false,
-            entrance: [0, 1],
-            exit: [9, 7],
-            mazeComplexity: 0,
-            mazeCols: 10,
-            mazeRows: 10,
-            // path: [
-            //     [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [3, 3], [3, 4], [3, 5], [3, 6], [4, 6], [5, 6],
-            //     [5, 7], [5, 8], [6, 8], [7, 8], [8, 8], [8, 7], [9, 7]
-            // ],
-            path: [],
-            animatingPath: true,
-            styleTable: {
-                barrierStyle: "#000000",
-                spaceStyle: "#fff",
-                entranceStyle: "#1E9C4D",
-                exitStyle: "#46E375",
-                pathStyle: "#FDDA0077",
-                lineStyle: "#38D96E"
-            }
-        },
-        methods: {
-            searchPath() {
-                new Promise((resolve, reject) => {
-                    this.searching = true;
-                    const up_vector = [0, -1], right_vector = [1, 0],
-                        down_vector = [0, 1], left_vector = [-1, 0];
-                    let open = [{
-                        location: this.entrance,
-                        vector: [0, 0],
-                        f: Number.POSITIVE_INFINITY,
-                        g: 0,
-                        h: Number.POSITIVE_INFINITY,
-                        parent: null
-                    }];
-                    const graph = [...open];
-                    while (open.length > 0) {
-                        open = open.sort((a, b) => a.f - b.f);
-                        const n_fmin = open.shift();
-                        if (n_fmin.location[0] === this.exit[0]
-                            && n_fmin.location[1] === this.exit[1]) {
-                            let p = n_fmin;
-                            const path = [];
-                            while (p) {
-                                path.unshift(p.location);
-                                p = p.parent;
-                            }
-                            resolve(path);
-                        }
-                        const expand_node = [up_vector, right_vector, down_vector, left_vector]
-                            // 求出下一步可能的位置
-                            .map(vec => {
-                                return {
-                                    vector: vec,
-                                    location: [n_fmin.location[0] + vec[0], n_fmin.location[1] + vec[1]]
+            el: '#app',
+            data: {
+                mapData: [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [0, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+                    [1, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+                    [1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+                    [1, 0, 1, 0, 0, 0, 1, 0, 1, 1],
+                    [1, 0, 1, 1, 1, 0, 1, 1, 0, 0],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                ],
+                mapDataString: "",
+                searching: false,
+                animating: false,
+                entrance: [0, 1],
+                exit: [9, 7],
+                mazeCols: 29,
+                mazeRows: 29,
+                // path: [
+                //     [0, 1], [1, 1], [2, 1], [2, 2], [2, 3], [3, 3], [3, 4], [3, 5], [3, 6], [4, 6], [5, 6],
+                //     [5, 7], [5, 8], [6, 8], [7, 8], [8, 8], [8, 7], [9, 7]
+                // ],
+                path: [],
+                animatingPath: true,
+                styleTable: {
+                    barrierStyle: "#000000",
+                    spaceStyle: "#fff",
+                    entranceStyle: "#1E9C4D",
+                    exitStyle: "#46E375",
+                    pathStyle: "#FDDA0077",
+                    lineStyle: "#38D96E55"
+                }
+            },
+            methods: {
+                searchPath() {
+                    new Promise((resolve, reject) => {
+                        this.searching = true;
+                        const up_vector = [0, -1], right_vector = [1, 0],
+                            down_vector = [0, 1], left_vector = [-1, 0];
+                        let open = [{
+                            location: this.entrance,
+                            vector: [0, 0],
+                            f: Number.POSITIVE_INFINITY,
+                            g: 0,
+                            h: Number.POSITIVE_INFINITY,
+                            parent: null
+                        }];
+                        const graph = [...open];
+                        while (open.length > 0) {
+                            open = open.sort((a, b) => a.f - b.f);
+                            const n_fmin = open.shift();
+                            if (n_fmin.location[0] === this.exit[0]
+                                && n_fmin.location[1] === this.exit[1]) {
+                                let p = n_fmin;
+                                const path = [];
+                                while (p) {
+                                    path.unshift(p.location);
+                                    p = p.parent;
                                 }
-                            })
-                            // 去掉越界、不可走的位置
-                            .filter(vec_loc => vec_loc.location[0] >= 0 && vec_loc.location[0] < this.cols
-                                && vec_loc.location[1] >= 0 && vec_loc.location[1] < this.rows
-                                && this.mapData[vec_loc.location[1]][vec_loc.location[0]] === 0
-                                && !(vec_loc.location[0] === this.entrance[0] && vec_loc.location[1] === this.entrance[1]))
-                            // 转换为结点
-                            .map(vec_loc => {
-                                const g = n_fmin.g +
-                                    ((vec_loc.vector[0] === n_fmin.vector[0] && vec_loc.vector[1] === n_fmin.vector[1]) ?
-                                    1 : 2);
-                                const h = this.exit[1] - vec_loc.location[1] + this.exit[0] - vec_loc.location[0];
-                                return {
-                                    location: vec_loc.location,
-                                    vector: vec_loc.vector,
-                                    f: g + h,
-                                    g: g,
-                                    h: h,
-                                    parent: n_fmin
+                                resolve(path);
+                            }
+                            const expand_node = [up_vector, right_vector, down_vector, left_vector]
+                                // 求出下一步可能的位置
+                                .map(vec => {
+                                    return {
+                                        vector: vec,
+                                        location: [n_fmin.location[0] + vec[0], n_fmin.location[1] + vec[1]]
+                                    }
+                                })
+                                // 去掉越界、不可走的位置
+                                .filter(vec_loc => vec_loc.location[0] >= 0 && vec_loc.location[0] < this.cols
+                                    && vec_loc.location[1] >= 0 && vec_loc.location[1] < this.rows
+                                    && this.mapData[vec_loc.location[1]][vec_loc.location[0]] === 0
+                                    && !(vec_loc.location[0] === this.entrance[0] && vec_loc.location[1] === this.entrance[1]))
+                                // 转换为结点
+                                .map(vec_loc => {
+                                    const g = n_fmin.g +
+                                        ((vec_loc.vector[0] === n_fmin.vector[0] && vec_loc.vector[1] === n_fmin.vector[1]) ?
+                                            1 : 2);
+                                    const h = this.exit[1] - vec_loc.location[1] + this.exit[0] - vec_loc.location[0];
+                                    return {
+                                        location: vec_loc.location,
+                                        vector: vec_loc.vector,
+                                        f: g + h,
+                                        g: g,
+                                        h: h,
+                                        parent: n_fmin
+                                    }
+                                });
+                            expand_node.forEach(node => {
+                                const results = graph.filter(nodeInGraph => nodeInGraph.location[0] === node.location[0]
+                                    && nodeInGraph.location[1] === node.location[1]);
+                                if (results.length > 0) {
+                                    const found = results[0];
+                                    if (node.f < found.f) {
+                                        found.parent = node.parent;
+                                        found.f = node.f;
+                                        found.g = node.g;
+                                        found.h = node.h;
+                                    }
+                                } else {
+                                    open.push(node);
+                                    graph.push(node);
                                 }
                             });
-                        expand_node.forEach(node => {
-                            const results = graph.filter(nodeInGraph => nodeInGraph.location[0] === node.location[0]
-                                && nodeInGraph.location[1] === node.location[1]);
-                            if (results.length > 0) {
-                                const found = results[0];
-                                if (node.f < found.f) {
-                                    found.parent = node.parent;
-                                    found.f = node.f;
-                                    found.g = node.g;
-                                    found.h = node.h;
-                                }
-                            } else {
-                                open.push(node);
-                                graph.push(node);
+                        }
+                        reject();
+                    }).then(path => {
+                        this.path.splice(0, this.path.length);
+                        if (this.animatingPath) {
+                            new Promise(() => {
+                                let i = 0;
+                                this.animating = true;
+                                const timer = setInterval(() => {
+                                    if (i < path.length) {
+                                        this.path.unshift(path[i]);
+                                        i++;
+                                    } else {
+                                        clearInterval(timer);
+                                        this.searching = false;
+                                        this.animating = false;
+                                    }
+                                }, 80);
+                            });
+                        } else {
+                            this.path.push(...path);
+                            this.searching = false;
+                            alert('搜索完毕！');
+                        }
+                    }).catch(() => {
+                        this.searching = false;
+                        this.path.splice(0, this.path.length);
+                        alert('搜索失败！');
+                    });
+                },
+                drawMapBoard() {
+                    let mapBoard = this.$refs.mapBoard;
+                    let width = mapBoard.width;
+                    let height = mapBoard.height;
+                    let cellWidth = width / this.cols;
+                    let cellHeight = height / this.rows;
+
+                    let ctx = this.$refs.mapBoard.getContext('2d');
+                    ctx.fillStyle = this.styleTable.barrierStyle;
+                    ctx.fillRect(0, 0, width, height);
+
+                    // 绘制地图
+                    ctx.fillStyle = this.styleTable.spaceStyle;
+                    this.mapData.forEach((rowData, y) => {
+                        rowData.forEach((colData, x) => {
+                            if (colData === 0) {
+                                ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
                             }
                         });
-                    }
-                    reject();
-                }).then(path => {
-                    this.path.splice(0, this.path.length);
-                    if (this.animatingPath) {
-                        new Promise(() => {
-                            let i = 0;
-                            this.animating = true;
-                            const timer = setInterval(() => {
-                                if (i < path.length) {
-                                    this.path.unshift(path[i]);
-                                    i++;
-                                } else {
-                                    clearInterval(timer);
-                                    this.searching = false;
-                                    this.animating = false;
-                                }
-                            }, 100);
-                        });
-                    } else {
-                        this.path.push(...path);
-                        this.searching = false;
-                        alert('搜索完毕！');
-                    }
-                }).catch(() => {
-                    this.searching = false;
-                    this.path.splice(0, this.path.length);
-                    alert('搜索失败！');
-                });
-            },
-            drawMapBoard() {
-                let mapBoard = this.$refs.mapBoard;
-                let width = mapBoard.width;
-                let height = mapBoard.height;
-                let cellWidth = width / this.cols;
-                let cellHeight = height / this.rows;
-
-                let ctx = this.$refs.mapBoard.getContext('2d');
-                ctx.fillStyle = this.styleTable.barrierStyle;
-                ctx.fillRect(0, 0, width, height);
-
-                // 绘制地图
-                ctx.fillStyle = this.styleTable.spaceStyle;
-                this.mapData.forEach((rowData, y) => {
-                    rowData.forEach((colData, x) => {
-                        if (colData === 0) {
-                            ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
-                        }
                     });
-                });
 
-                // 绘制线条（看得更清楚）
-                ctx.strokeStyle = this.styleTable.lineStyle;
-                ctx.lineWidth = 2;
-                for (let x = 0; x < this.cols + 1; x++) {
-                    ctx.beginPath();
-                    ctx.moveTo(x * cellWidth, 0);
-                    ctx.lineTo(x * cellWidth, height);
-                    ctx.stroke();
+                    // 绘制线条（看得更清楚）
+                    ctx.strokeStyle = this.styleTable.lineStyle;
+                    ctx.lineWidth = 2;
+                    for (let x = 0; x < this.cols + 1; x++) {
+                        ctx.beginPath();
+                        ctx.moveTo(x * cellWidth, 0);
+                        ctx.lineTo(x * cellWidth, height);
+                        ctx.stroke();
+                    }
+                    for (let y = 0; y < this.rows + 1; y++) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y * cellHeight);
+                        ctx.lineTo(width, y * cellHeight);
+                        ctx.stroke();
+                    }
+
+                    // 绘制入口
+                    ctx.fillStyle = this.styleTable.entranceStyle;
+                    ctx.fillRect(this.entrance[0] * cellWidth, this.entrance[1] * cellHeight, cellWidth, cellHeight);
+
+                    // 绘制出口
+                    ctx.fillStyle = this.styleTable.exitStyle;
+                    ctx.fillRect(this.exit[0] * cellWidth, this.exit[1] * cellHeight, cellWidth, cellHeight);
+
+                    // 绘制路径
+                    ctx.fillStyle = this.styleTable.pathStyle;
+                    this.path.forEach(p => ctx.fillRect(p[0] * cellWidth, p[1] * cellHeight, cellWidth, cellHeight));
+                },
+                generateMaze() {
+                    let maze = this.newMaze(this.mazeCols, this.mazeRows);
+                    let mapData = this.covertMaze(maze, this.mazeRows, this.mazeCols);
+                    mapData[this.mazeCols * 2 - 1][this.mazeRows * 2] = 0;
+                    this.$set(this, 'mapData', mapData);
+                    this.$set(this, 'exit', [this.mazeRows * 2, this.mazeCols * 2 - 1]);
+                    this.path.splice(0, this.path.length);
+                    this.showMapDataString();
+                },
+                showMapDataString(){
+                    this.mapDataString = this.mapData.map(i => i.join(",")).join("\n");
+                },
+                newMaze(x, y) {
+
+                    // Establish variables and starting grid
+                    let totalCells = x * y;
+                    let cells = new Array();
+                    let unvis = new Array();
+                    for (let i = 0; i < y; i++) {
+                        cells[i] = new Array();
+                        unvis[i] = new Array();
+                        for (let j = 0; j < x; j++) {
+                            cells[i][j] = [0, 0, 0, 0];
+                            unvis[i][j] = true;
+                        }
+                    }
+
+                    // Set a random position to start from
+                    let currentCell = [Math.floor(Math.random() * y), Math.floor(Math.random() * x)];
+                    let path = [currentCell];
+                    unvis[currentCell[0]][currentCell[1]] = false;
+                    let visited = 1;
+
+                    // Loop through all available cell positions
+                    let next;
+                    while (visited < totalCells) {
+                        // Determine neighboring cells
+                        let pot = [[currentCell[0] - 1, currentCell[1], 0, 2],
+                            [currentCell[0], currentCell[1] + 1, 1, 3],
+                            [currentCell[0] + 1, currentCell[1], 2, 0],
+                            [currentCell[0], currentCell[1] - 1, 3, 1]];
+                        let neighbors = new Array();
+
+                        // Determine if each neighboring cell is in game grid, and whether it has already been checked
+                        for (let l = 0; l < 4; l++) {
+                            if (pot[l][0] > -1 && pot[l][0] < y && pot[l][1] > -1 && pot[l][1] < x && unvis[pot[l][0]][pot[l][1]]) {
+                                neighbors.push(pot[l]);
+                            }
+                        }
+
+                        // If at least one active neighboring cell has been found
+                        if (neighbors.length) {
+                            // Choose one of the neighbors at random
+                            next = neighbors[Math.floor(Math.random() * neighbors.length)];
+
+                            // Remove the wall between the current cell and the chosen neighboring cell
+                            cells[currentCell[0]][currentCell[1]][next[2]] = 1;
+                            cells[next[0]][next[1]][next[3]] = 1;
+
+                            // Mark the neighbor as visited, and set it as the current cell
+                            unvis[next[0]][next[1]] = false;
+                            visited++;
+                            currentCell = [next[0], next[1]];
+                            path.push(currentCell);
+                        }
+                        // Otherwise go back up a step and keep going
+                        else {
+                            currentCell = path.pop();
+                        }
+                    }
+                    return cells;
+                },
+                covertMaze(maze, row, col) {
+                    let map = new Array(2 * row + 1);
+                    // 生成空白地图
+                    for (let i = 0; i < map.length; i++) {
+                        let rowData = new Array(2 * col + 1);
+                        for (let j = 0; j < rowData.length; j++) {
+                            rowData[j] = ((i + 1) % 2 == 0 && (j + 1) % 2 == 0) ? 0 : 1;
+                        }
+                        map[i] = rowData;
+                    }
+
+                    for (let y = 1; y <= maze.length; y++) {
+                        for (let x = 1; x <= maze[y - 1].length; x++) {
+                            map[2 * y - 1 - 1][2 * x - 1] = !maze[y - 1][x - 1][0] ? 1 : 0;
+                            map[2 * y - 1][2 * x - 1 + 1] = !maze[y - 1][x - 1][1] ? 1 : 0;
+                            map[2 * y - 1 + 1][2 * x - 1] = !maze[y - 1][x - 1][2] ? 1 : 0;
+                            map[2 * y - 1][2 * x - 1 - 1] = !maze[y - 1][x - 1][3] ? 1 : 0;
+                        }
+                    }
+                    return map;
                 }
-                for (let y = 0; y < this.rows + 1; y++) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y * cellHeight);
-                    ctx.lineTo(width, y * cellHeight);
-                    ctx.stroke();
+            },
+            computed: {
+                rows() {
+                    return this.mapData.length;
                 }
-
-                // 绘制入口
-                ctx.fillStyle = this.styleTable.entranceStyle;
-                ctx.fillRect(this.entrance[0] * cellWidth, this.entrance[1] * cellHeight, cellWidth, cellHeight);
-
-                // 绘制出口
-                ctx.fillStyle = this.styleTable.exitStyle;
-                ctx.fillRect(this.exit[0] * cellWidth, this.exit[1] * cellHeight, cellWidth, cellHeight);
-
-                // 绘制路径
-                ctx.fillStyle = this.styleTable.pathStyle;
-                this.path.forEach(p => ctx.fillRect(p[0] * cellWidth, p[1] * cellHeight, cellWidth, cellHeight));
+                ,
+                cols() {
+                    return this.mapData[0] ? this.mapData[0].length : 0;
+                }
             },
-            generateMaze() {
-
+            mounted() {
+                this.showMapDataString();
+            },
+            watch: {
+                mapDataString: function (val, oldVal) {
+                    let newArray = [];
+                    val.split("\n").forEach(line => {
+                        let tempArray = [];
+                        line.split(",").forEach(ch => tempArray.push(parseInt(ch)));
+                        newArray.push(tempArray);
+                    })
+                    this.$set(this, 'mapData', newArray);
+                    this.drawMapBoard();
+                },
+                entrance: function () {
+                    this.drawMapBoard();
+                },
+                exit: function () {
+                    this.drawMapBoard();
+                },
+                path: function () {
+                    this.drawMapBoard();
+                }
             }
-        },
-        computed: {
-            rows() {
-                return this.mapData.length;
-            },
-            cols() {
-                return this.mapData[0] ? this.mapData[0].length : 0;
-            }
-        },
-        mounted() {
-            this.mapDataString = this.mapData.map(i => i.join(",")).join("\n");
-        },
-        watch: {
-            mapDataString: function (val, oldVal) {
-                let newArray = [];
-                val.split("\n").forEach(line => {
-                    let tempArray = [];
-                    line.split(",").forEach(ch => tempArray.push(parseInt(ch)));
-                    newArray.push(tempArray);
-                })
-                this.$set(this, 'mapData', newArray);
-                this.drawMapBoard();
-            },
-            entrance: function () {
-                this.drawMapBoard();
-            },
-            exit: function () {
-                this.drawMapBoard();
-            },
-            path: function () {
-                this.drawMapBoard();
-            }
-        }
-    });
+        })
+    ;
 </script>
 
 </html>
